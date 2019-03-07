@@ -5,7 +5,7 @@ authors = ["Morten Torgund Dalfoss <mortendalfoss@gmail.com>"]
 edition = "2018"
 
 [lib]
-name = "edist
+name = "edist"
 crate-type = ["cdylib"]
 
 [dependencies.pyo3]
