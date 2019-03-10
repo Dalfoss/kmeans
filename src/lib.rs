@@ -6,19 +6,18 @@ use pyo3::wrap_pyfunction;
 
 #[pyfunction]
 fn kmeans(centroids: Vec<(i64,i64)>, points: Vec<(i64,i64)>) -> PyResult<Vec<usize>> {
-    Ok(closest_centroid(&centroids, &points))
+    Ok(closest_centroids(&centroids, &points))
 }
 
 #[pymodule]
 fn edist(_py: Python, m: &PyModule) -> PyResult<()> {
-    m.add_wrapped(wrap_pyfunction!(euclidean_dist))?;
+    m.add_wrapped(wrap_pyfunction!(kmeans))?;
 
     Ok(())
 }
 
 
-
-fn closest_centroid(centroids: &Vec<(i64,i64)>, points: &Vec<(i64,i64)>) -> Vec<usize> {
+fn closest_centroids(centroids: &Vec<(i64,i64)>, points: &Vec<(i64,i64)>) -> Vec<usize> {
     let mut res = Vec::<usize>::new();
 
     for n in points {
