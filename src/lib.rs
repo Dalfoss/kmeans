@@ -5,7 +5,20 @@ use pyo3::wrap_pyfunction;
 
 
 #[pyfunction]
-fn euclidean_dist(centroids: Vec<(i64,i64)>, points: Vec<(i64,i64)>) -> PyResult<Vec<usize>> {
+fn kmeans(centroids: Vec<(i64,i64)>, points: Vec<(i64,i64)>) -> PyResult<Vec<usize>> {
+    Ok(closest_centroid(&centroids, &points))
+}
+
+#[pymodule]
+fn edist(_py: Python, m: &PyModule) -> PyResult<()> {
+    m.add_wrapped(wrap_pyfunction!(euclidean_dist))?;
+
+    Ok(())
+}
+
+
+
+fn closest_centroid(centroids: &Vec<(i64,i64)>, points: &Vec<(i64,i64)>) -> Vec<usize> {
     let mut res = Vec::<usize>::new();
 
     for n in points {
@@ -24,16 +37,8 @@ fn euclidean_dist(centroids: Vec<(i64,i64)>, points: Vec<(i64,i64)>) -> PyResult
                 (Some(_x),None) => panic!("Interger overflow occured while squaring {}", n.1-j.1),
             }
         }
-        res.push(cc.0)
+        res.push(cc.0);
     }
     
-    Ok(res)
+    res
 }
-
-#[pymodule]
-fn edist(_py: Python, m: &PyModule) -> PyResult<()> {
-    m.add_wrapped(wrap_pyfunction!(euclidean_dist))?;
-
-    Ok(())
-}
-
