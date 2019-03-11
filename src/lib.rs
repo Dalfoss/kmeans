@@ -3,11 +3,22 @@ extern crate pyo3;
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
 
-
 #[pyfunction]
 fn kmeans(centroids: Vec<(f64,f64)>, points: Vec<(f64,f64)>) -> PyResult<Vec<(f64,f64)>> {
-    Ok(move_centroids(&centroids, &points))
+    fn kmeans_inner(centroids: Vec<(f64,f64)>, points: &Vec<(f64,f64)>, last_c_points: Vec<usize>) -> Vec<(f64,f64)> {
+        let new_centroids = move_centroids(centroids, points, &last_c_points);
+        let c_points = closest_centroids(&new_centroids, &points);
+
+        if is_done(&c_points, last_c_points) != false {
+            return new_centroids
+        }
+        kmeans_inner(new_centroids, points, c_points)
+    }
+ 
+    let c_points = closest_centroids(&centroids, &points);
+    Ok(kmeans_inner(centroids, &points, c_points))
 }
+
 
 #[pymodule]
 fn edist(_py: Python, m: &PyModule) -> PyResult<()> {
@@ -27,8 +38,8 @@ fn closest_centroids(centroids: &Vec<(f64,f64)>, points: &Vec<(f64,f64)>) -> Vec
             let sq_dists: (f64, f64) = ((n.0-j.0).powi(2), (n.1-j.1).powi(2));
             // Matching the squared result to catch integer overflow
             if sq_dists.0+sq_dists.1 < cc.1 {
-                    cc.0 = i;
-                    cc.1 = sq_dists.0 + sq_dists.1
+                cc.0 = i;
+                cc.1 = sq_dists.0+sq_dists.1
             }
         }
         res.push(cc.0);
@@ -36,12 +47,11 @@ fn closest_centroids(centroids: &Vec<(f64,f64)>, points: &Vec<(f64,f64)>) -> Vec
     res
 }
 
-fn move_centroids(centroids: &Vec<(f64,f64)>, points: &Vec<(f64,f64)>) -> Vec<(f64,f64)> {
-    let p = closest_centroids(&centroids, &points);
+fn move_centroids(centroids: Vec<(f64,f64)>, points: &Vec<(f64,f64)>, c_points: &Vec<usize>) -> Vec<(f64,f64)> {
     let mut new_centroids: Vec<(f64,f64)> = Vec::with_capacity(centroids.len());
     let mut mean_loc: Vec<(f64, (f64,f64))> = vec![(0.0,(0.0,0.0)); centroids.len()];
 
-    for (i,&j) in p.iter().enumerate() {
+    for (i,&j) in c_points.iter().enumerate() {
         let (x, y) = points[i];
         mean_loc[j] = (mean_loc[j].0 + 1.0, ((mean_loc[j].1).0 + x, (mean_loc[j].1).1 + y));
     }
@@ -50,4 +60,22 @@ fn move_centroids(centroids: &Vec<(f64,f64)>, points: &Vec<(f64,f64)>) -> Vec<(f
         new_centroids.push(((k.1).0 / k.0, (k.1).1 / k.0));
     }
     new_centroids
+}
+
+fn is_done(c1: &Vec<usize>, c2: Vec<usize>) -> bool {
+
+    if c2.len() != c1.len() {
+        return false 
+    }
+    let mut moved: f64 = 0.0;
+    for (i,&j) in c1.iter().enumerate() {
+        if j != c2[i] {
+            moved = moved + 1.0;
+        }
+    }
+    if moved/(c1.len() as f64) < 0.000000001 {
+        true
+    } else {
+        false
+    }
 }
