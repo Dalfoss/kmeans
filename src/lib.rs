@@ -21,7 +21,7 @@ fn kmeans(centroids: Vec<(f64,f64)>, points: Vec<(f64,f64)>) -> PyResult<Vec<(f6
 
 
 #[pymodule]
-fn edist(_py: Python, m: &PyModule) -> PyResult<()> {
+fn libedist(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(kmeans))?;
 
     Ok(())
