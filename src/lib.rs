@@ -62,8 +62,25 @@ fn move_centroids(centroids: Vec<(f64,f64)>, points: &Vec<(f64,f64)>, c_points: 
     new_centroids
 }
 
-fn is_done(c1: &Vec<usize>, c2: Vec<usize>) -> bool {
+//fn init_centroids(points: &Vec<(f64,f64)>, k: usize, method: String) -> Vec<(f64,f64)> {
+//
+//    fn kmeans_pp(points: &Vec<(f64, f64)>, k: usize) -> Vec<(f64,f64)> {
+//
+//    }
+//
+//    fn random(points: &Vec<(f64, f64)>, k: usize) -> Vec<(f64,f64)> {
+//
+//    }
+//
+//    if method == "random" {
+//        random(points, k)
+//    } else {
+//        kmeans_pp(points, k)
+//    }
+//
+//}
 
+fn is_done(c1: &Vec<usize>, c2: Vec<usize>) -> bool {
     if c2.len() != c1.len() {
         return false 
     }
@@ -73,7 +90,7 @@ fn is_done(c1: &Vec<usize>, c2: Vec<usize>) -> bool {
             moved = moved + 1.0;
         }
     }
-    if moved/(c1.len() as f64) < 0.01 {
+    if moved/(c1.len() as f64) < 0.005 {
         true
     } else {
         println!("{} points changed centroid.", moved);
