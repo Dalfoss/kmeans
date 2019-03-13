@@ -12,7 +12,7 @@ import libedist
 
 def run_kmeans(points, k):
     start = time.perf_counter()
-    final_centroids = libedist.kmeans(points, k)
+    final_centroids = libedist.kmeans(points, k, "kmeans_pp")
     end = time.perf_counter()
 
     delta = end - start
@@ -20,6 +20,14 @@ def run_kmeans(points, k):
     return final_centroids
 
 
+def run_kmeans_random(points, k):
+    start = time.perf_counter()
+    final_centroids = libedist.kmeans(points, k, "random")
+    end = time.perf_counter()
+
+    delta = end - start
+    print("Runtime: %f seconds" % delta)
+    return final_centroids
 
 
 def run_sk_kmeans(points, k):
@@ -39,5 +47,6 @@ if __name__ == "__main__":
     points = []
     for point in sk_points:
         points.append((point[0], point[1]))
-    result = run_kmeans(points, 100)
+    result1 = run_kmeans_random(points, 100)
+    result2 = run_kmeans(points, 100)
     sk_result = run_sk_kmeans(sk_points, 100)
