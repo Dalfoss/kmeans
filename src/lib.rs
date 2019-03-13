@@ -1,11 +1,12 @@
 extern crate pyo3;
 
+use std::collections::HashSet;
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
-use rand::Rng;
+use rand::distributions::{Distribution, Uniform};
 
 #[pyfunction]
-fn kmeans(centroids: Vec<(f64,f64)>, points: Vec<(f64,f64)>) -> PyResult<Vec<(f64,f64)>> {
+fn kmeans(points: Vec<(f64,f64)>, k: usize) -> PyResult<Vec<(f64,f64)>> {
     fn kmeans_inner(centroids: Vec<(f64,f64)>, points: &Vec<(f64,f64)>, last_c_points: Vec<usize>) -> Vec<(f64,f64)> {
         let new_centroids = move_centroids(centroids, points, &last_c_points);
         let c_points = closest_centroids(&new_centroids, &points);
@@ -15,7 +16,7 @@ fn kmeans(centroids: Vec<(f64,f64)>, points: Vec<(f64,f64)>) -> PyResult<Vec<(f6
         }
         kmeans_inner(new_centroids, points, c_points)
     }
- 
+    let centroids = init_centroids(&points, k, "random".to_string());
     let c_points = closest_centroids(&centroids, &points);
     Ok(kmeans_inner(centroids, &points, c_points))
 }
@@ -65,18 +66,33 @@ fn move_centroids(centroids: Vec<(f64,f64)>, points: &Vec<(f64,f64)>, c_points: 
 
 fn init_centroids(points: &Vec<(f64,f64)>, k: usize, method: String) -> Vec<(f64,f64)> {
 
-    fn kmeans_pp(points: &Vec<(f64, f64)>, k: usize) -> Vec<(f64,f64)> {
-
-    }
+//    fn kmeans_pp(points: &Vec<(f64, f64)>, k: usize) -> Vec<(f64,f64)> {
+//
+//    }
 
     fn random(points: &Vec<(f64, f64)>, k: usize) -> Vec<(f64,f64)> {
-        
+        let size = Uniform::from(0..points.len()-1);
+        let mut rng = rand::thread_rng();
+        let mut indices = HashSet::with_capacity(k);
+        loop {
+            if indices.len() == k {
+                break
+            }
+            indices.insert(size.sample(&mut rng));
+        }
+        let mut centroids: Vec<(f64,f64)> = Vec::with_capacity(k);
+        for i in indices {
+            centroids.push(points[i])
+        }
+        centroids
     }
 
     if method == "random" {
         random(points, k)
     } else {
-        kmeans_pp(points, k)
+        //        kmeans_pp(points, k)
+        let l: Vec<(f64,f64)> = Vec::new();
+        return l
     }
 
 }
@@ -92,7 +108,7 @@ fn is_done(c1: &Vec<usize>, c2: Vec<usize>) -> bool {
         }
     }
 
-    if moved/(c1.len() as f64) < 0.0005 {
+    if moved/(c1.len() as f64) < 0.0002 {
         true
     } else {
         println!("{} points changed centroid.", moved);
