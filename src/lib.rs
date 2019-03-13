@@ -83,18 +83,11 @@ fn init_centroids(points: &Vec<(f64,f64)>, k: usize, method: String) -> Vec<(f64
         
         let mut rng = rand::thread_rng();
         let mut centroids: Vec<(f64,f64)> = Vec::with_capacity(k);
-        let mut min_dist_sq: Vec<f64> = Vec::with_capacity(points.len());
+        let mut min_dist_sq: Vec<f64> = vec![std::f64::MAX; points.len()];
 
         // Establishes the min_dist_sq vector
         let first_centroid = points[rng.gen_range(0, points.len()-1)];
         centroids.push(first_centroid);
-        for &point in points {
-            match centroids.last() {
-                Some((x,y)) => min_dist_sq.push((point.0-x).powi(2) + (point.1-y).powi(2)),
-                None => panic!("fejl i kmeans_pp")
-            }
-        }
-        centroids.push(points[find_next_centroid(&min_dist_sq, &mut rng)]);
 
         for _n in centroids.len().. k {
             for (i, &point) in points.iter().enumerate() {
