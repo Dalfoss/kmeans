@@ -7,18 +7,20 @@ use rand::distributions::{Distribution, Uniform};
 
 #[pyfunction]
 fn kmeans(points: Vec<(f64,f64)>, k: usize) -> PyResult<Vec<(f64,f64)>> {
-    fn kmeans_inner(centroids: Vec<(f64,f64)>, points: &Vec<(f64,f64)>, last_c_points: Vec<usize>) -> Vec<(f64,f64)> {
+    fn kmeans_inner(centroids: Vec<(f64,f64)>, points: &Vec<(f64,f64)>, last_c_points: Vec<usize>, mut iterations: usize) -> Vec<(f64,f64)> {
         let new_centroids = move_centroids(centroids, points, &last_c_points);
         let c_points = closest_centroids(&new_centroids, &points);
-
+        
+        iterations += 1;
         if is_done(&c_points, last_c_points) != false {
+            println!("Total iterations: {}", iterations);
             return new_centroids
         }
-        kmeans_inner(new_centroids, points, c_points)
+        kmeans_inner(new_centroids, points, c_points, iterations)
     }
     let centroids = init_centroids(&points, k, "random".to_string());
     let c_points = closest_centroids(&centroids, &points);
-    Ok(kmeans_inner(centroids, &points, c_points))
+    Ok(kmeans_inner(centroids, &points, c_points, 0))
 }
 
 

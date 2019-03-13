@@ -24,7 +24,7 @@ def run_kmeans(points, k):
 
 def run_sk_kmeans(points, k):
     start = time.perf_counter()
-    kmeans = KMeans(n_init=1, verbose=1, n_clusters=k).fit(points)
+    kmeans = KMeans(n_init=1, init="random", verbose=1, n_clusters=k).fit(points)
     end = time.perf_counter()
     delta = end - start
     print("Runtime: %f seconds" % delta)
