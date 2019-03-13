@@ -7,7 +7,7 @@ use rand::prelude::*;
 use rand::distributions::{Distribution, Uniform};
 
 #[pyfunction]
-fn kmeans(points: Vec<(f64,f64)>, k: usize) -> PyResult<Vec<(f64,f64)>> {
+fn kmeans(points: Vec<(f64,f64)>, k: usize, method: String) -> PyResult<Vec<(f64,f64)>> {
     fn kmeans_inner(centroids: Vec<(f64,f64)>, points: &Vec<(f64,f64)>, last_c_points: Vec<usize>, mut iterations: usize) -> Vec<(f64,f64)> {
         let new_centroids = move_centroids(centroids, points, &last_c_points);
         let c_points = closest_centroids(&new_centroids, &points);
@@ -19,7 +19,7 @@ fn kmeans(points: Vec<(f64,f64)>, k: usize) -> PyResult<Vec<(f64,f64)>> {
         }
         kmeans_inner(new_centroids, points, c_points, iterations)
     }
-    let centroids = init_centroids(&points, k, "".to_string());
+    let centroids = init_centroids(&points, k, method);
     let c_points = closest_centroids(&centroids, &points);
     Ok(kmeans_inner(centroids, &points, c_points, 0))
 }
@@ -130,6 +130,7 @@ fn init_centroids(points: &Vec<(f64,f64)>, k: usize, method: String) -> Vec<(f64
     }
 
     if method == "random" {
+        println!("Using random init");
         random(points, k)
     } else {
         println!("Using kmeans++");
@@ -152,7 +153,6 @@ fn is_done(c1: &Vec<usize>, c2: Vec<usize>) -> bool {
     if moved/(c1.len() as f64) < 0.0002 {
         true
     } else {
-        println!("{} points changed centroid.", moved);
         false
     }
 }
