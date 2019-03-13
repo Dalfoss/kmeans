@@ -91,6 +91,7 @@ fn is_done(c1: &Vec<usize>, c2: Vec<usize>) -> bool {
             moved = moved + 1.0;
         }
     }
+
     if moved/(c1.len() as f64) < 0.0005 {
         true
     } else {
