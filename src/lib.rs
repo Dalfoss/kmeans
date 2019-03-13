@@ -2,6 +2,7 @@ extern crate pyo3;
 
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
+use rand::Rng;
 
 #[pyfunction]
 fn kmeans(centroids: Vec<(f64,f64)>, points: Vec<(f64,f64)>) -> PyResult<Vec<(f64,f64)>> {
@@ -62,23 +63,23 @@ fn move_centroids(centroids: Vec<(f64,f64)>, points: &Vec<(f64,f64)>, c_points: 
     new_centroids
 }
 
-//fn init_centroids(points: &Vec<(f64,f64)>, k: usize, method: String) -> Vec<(f64,f64)> {
-//
-//    fn kmeans_pp(points: &Vec<(f64, f64)>, k: usize) -> Vec<(f64,f64)> {
-//
-//    }
-//
-//    fn random(points: &Vec<(f64, f64)>, k: usize) -> Vec<(f64,f64)> {
-//
-//    }
-//
-//    if method == "random" {
-//        random(points, k)
-//    } else {
-//        kmeans_pp(points, k)
-//    }
-//
-//}
+fn init_centroids(points: &Vec<(f64,f64)>, k: usize, method: String) -> Vec<(f64,f64)> {
+
+    fn kmeans_pp(points: &Vec<(f64, f64)>, k: usize) -> Vec<(f64,f64)> {
+
+    }
+
+    fn random(points: &Vec<(f64, f64)>, k: usize) -> Vec<(f64,f64)> {
+        
+    }
+
+    if method == "random" {
+        random(points, k)
+    } else {
+        kmeans_pp(points, k)
+    }
+
+}
 
 fn is_done(c1: &Vec<usize>, c2: Vec<usize>) -> bool {
     if c2.len() != c1.len() {

@@ -8,6 +8,9 @@ edition = "2018"
 name = "edist"
 crate-type = ["cdylib"]
 
+[dependencies]
+rand = "0.6.5"
+
 [dependencies.pyo3]
 version = "0.6.0-alpha.4"
 features = ["extension-module"]
