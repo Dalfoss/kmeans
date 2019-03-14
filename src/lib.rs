@@ -33,18 +33,18 @@ fn libedist(_py: Python, m: &PyModule) -> PyResult<()> {
 }
 
 
-fn closest_centroids(centroids: &Vec<(f64,f64)>, points: &Vec<(f64,f64)>) -> Vec<usize> {
+fn closest_centroids(centroids: &Vec<Vec<f64>>, points: &Vec<Vec<f64>> -> Vec<usize> {
     let mut res: Vec<usize> = Vec::with_capacity(points.len());
 
     for n in points {
         let mut cc: (usize, f64) = (0, std::f64::MAX); // Closest centroid and the squared distance (centroid, dist)
 
         for (i,j) in centroids.iter().enumerate() {
-            let sq_dists: (f64, f64) = ((n.0-j.0).powi(2), (n.1-j.1).powi(2));
+            let sq_dist: usize = j.fold(0, |acc, x| acc + x*x);
             // Matching the squared result to catch integer overflow
-            if sq_dists.0+sq_dists.1 < cc.1 {
+            if sq_dist < cc.1 {
                 cc.0 = i;
-                cc.1 = sq_dists.0+sq_dists.1
+                cc.1 = sq_dist
             }
         }
         res.push(cc.0);
