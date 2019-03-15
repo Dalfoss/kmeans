@@ -7,8 +7,8 @@ use rand::prelude::*;
 use rand::distributions::{Distribution, Uniform};
 
 #[pyfunction]
-fn kmeans(points: Vec<(f64,f64)>, k: usize, method: String) -> PyResult<Vec<(f64,f64)>> {
-    fn kmeans_inner(centroids: Vec<(f64,f64)>, points: &Vec<(f64,f64)>, last_c_points: Vec<usize>, mut iterations: usize) -> Vec<(f64,f64)> {
+fn kmeans(points: Vec<Vec<f64>>, k: usize, method: String) -> PyResult<Vec<Vec<f64>>> {
+    fn kmeans_inner(centroids: Vec<Vec<f64>>, points: &Vec<Vec<f64>>, last_c_points: Vec<usize>, mut iterations: usize) -> Vec<Vec<f64>> {
         let new_centroids = move_centroids(centroids, points, &last_c_points);
         let c_points = closest_centroids(&new_centroids, &points);
         
@@ -33,15 +33,14 @@ fn libedist(_py: Python, m: &PyModule) -> PyResult<()> {
 }
 
 
-fn closest_centroids(centroids: &Vec<Vec<f64>>, points: &Vec<Vec<f64>> -> Vec<usize> {
+fn closest_centroids(centroids: &Vec<Vec<f64>>, points: &Vec<Vec<f64>>) -> Vec<usize> {
     let mut res: Vec<usize> = Vec::with_capacity(points.len());
 
     for n in points {
         let mut cc: (usize, f64) = (0, std::f64::MAX); // Closest centroid and the squared distance (centroid, dist)
 
-        for (i,j) in centroids.iter().enumerate() {
-            let sq_dist: usize = j.fold(0, |acc, x| acc + x*x);
-            // Matching the squared result to catch integer overflow
+        for (i,&j) in centroids.iter().enumerate() {
+            let sq_dist: f64 = j.iter().fold(0.0, |acc, x| acc + x*x);
             if sq_dist < cc.1 {
                 cc.0 = i;
                 cc.1 = sq_dist
@@ -52,19 +51,18 @@ fn closest_centroids(centroids: &Vec<Vec<f64>>, points: &Vec<Vec<f64>> -> Vec<us
     res
 }
 
-fn move_centroids(centroids: Vec<(f64,f64)>, points: &Vec<(f64,f64)>, c_points: &Vec<usize>) -> Vec<(f64,f64)> {
+fn move_centroids(centroids: Vec<Vec<f64>>, points: &Vec<Vec<f64>>, c_points: &Vec<usize>) -> Vec<Vec<f64>> {
     let mut new_centroids: Vec<(f64,f64)> = Vec::with_capacity(centroids.len());
-    let mut mean_loc: Vec<(f64, (f64,f64))> = vec![(0.0,(0.0,0.0)); centroids.len()];
-
-    for (i,&j) in c_points.iter().enumerate() {
-        let (x, y) = points[i];
-        mean_loc[j] = (mean_loc[j].0 + 1.0, ((mean_loc[j].1).0 + x, (mean_loc[j].1).1 + y));
-    }
+    let mut mean_loc: Vec<(f64, Vec<f64>)> = vec![(0.0, vec![0.0; centroids[0].len()]); centroids.len()];
     
-    for k in mean_loc {
-        new_centroids.push(((k.1).0 / k.0, (k.1).1 / k.0));
+    for (i,&j) in c_points.iter().enumerate() {
+        for (&pref, &mut cref) in points[i].iter().zip(&mut mean_loc[j].1) {
+            cref = pref + cref;
+        }
+        mean_loc[j].0 = mean_loc[j].0 + 1.0;
     }
-    new_centroids
+
+    mean_loc.iter().map(|(n, c)| c.into_iter().map(|x| x/n).collect()).collect();
 }
 
 fn init_centroids(points: &Vec<(f64,f64)>, k: usize, method: String) -> Vec<(f64,f64)> {
