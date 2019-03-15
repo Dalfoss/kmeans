@@ -41,12 +41,12 @@ def run_sk_kmeans(points, k):
 
 if __name__ == "__main__":
     # sklean points and centroids
-    sk_points = np.random.randint(1000, size=(100000,2))
+    sk_points = np.random.randint(2000, size=(500000,4))
 
     # libedist points and centroids
     points = []
     for point in sk_points:
-        points.append((point[0], point[1]))
+        points.append([point[0], point[1], point[2], point[3]])
     result1 = run_kmeans_random(points, 100)
     result2 = run_kmeans(points, 100)
     sk_result = run_sk_kmeans(sk_points, 100)

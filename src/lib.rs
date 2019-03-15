@@ -39,8 +39,8 @@ fn closest_centroids(centroids: &Vec<Vec<f64>>, points: &Vec<Vec<f64>>) -> Vec<u
     for n in points {
         let mut cc: (usize, f64) = (0, std::f64::MAX); // Closest centroid and the squared distance (centroid, dist)
 
-        for (i,&j) in centroids.iter().enumerate() {
-            let sq_dist: f64 = j.iter().fold(0.0, |acc, x| acc + x*x);
+        for (i,j) in centroids.iter().enumerate() {
+            let sq_dist: f64 = j.iter().zip(n).fold(0.0, |acc, (x, p)| acc + (p-x).powi(2));
             if sq_dist < cc.1 {
                 cc.0 = i;
                 cc.1 = sq_dist
@@ -52,22 +52,21 @@ fn closest_centroids(centroids: &Vec<Vec<f64>>, points: &Vec<Vec<f64>>) -> Vec<u
 }
 
 fn move_centroids(centroids: Vec<Vec<f64>>, points: &Vec<Vec<f64>>, c_points: &Vec<usize>) -> Vec<Vec<f64>> {
-    let mut new_centroids: Vec<(f64,f64)> = Vec::with_capacity(centroids.len());
+
     let mut mean_loc: Vec<(f64, Vec<f64>)> = vec![(0.0, vec![0.0; centroids[0].len()]); centroids.len()];
     
     for (i,&j) in c_points.iter().enumerate() {
-        for (&pref, &mut cref) in points[i].iter().zip(&mut mean_loc[j].1) {
-            cref = pref + cref;
-        }
+        mean_loc[j].1 = points[i].iter().zip(&mean_loc[j].1).map(|(p,x)| p+x).collect();
+            
         mean_loc[j].0 = mean_loc[j].0 + 1.0;
     }
 
-    mean_loc.iter().map(|(n, c)| c.into_iter().map(|x| x/n).collect()).collect();
+    mean_loc.iter().map(|(n, c)| c.into_iter().map(|x| x/n).collect()).collect()
 }
 
-fn init_centroids(points: &Vec<(f64,f64)>, k: usize, method: String) -> Vec<(f64,f64)> {
+fn init_centroids(points: &Vec<Vec<f64>>, k: usize, method: String) -> Vec<Vec<f64>> {
 
-    fn kmeans_pp(points: &Vec<(f64, f64)>, k: usize) -> Vec<(f64,f64)> {
+    fn kmeans_pp(points: &Vec<Vec<f64>>, k: usize) -> Vec<Vec<f64>> {
         fn find_next_centroid(dists: &Vec<f64>, rng: &mut ThreadRng) -> usize {
             let mut best_choice: (usize, f64) = (0, 0.0);
             for (i, &j) in dists.iter().enumerate() {
@@ -80,17 +79,16 @@ fn init_centroids(points: &Vec<(f64,f64)>, k: usize, method: String) -> Vec<(f64
         }
         
         let mut rng = rand::thread_rng();
-        let mut centroids: Vec<(f64,f64)> = Vec::with_capacity(k);
+        let mut centroids: Vec<Vec<f64>> = Vec::with_capacity(k);
         let mut min_dist_sq: Vec<f64> = vec![std::f64::MAX; points.len()];
 
         // Establishes the min_dist_sq vector
-        let first_centroid = points[rng.gen_range(0, points.len()-1)];
-        centroids.push(first_centroid);
+        centroids.push(points[rng.gen_range(0, points.len()-1)].to_vec());
 
         for _n in centroids.len().. k {
-            for (i, &point) in points.iter().enumerate() {
-                if let Some((x,y)) = centroids.last() {
-                    let dist_sq = (point.0-x).powi(2) + (point.1-y).powi(2);
+            for (i, point) in points.iter().enumerate() {
+                if let Some(c) = centroids.last() {
+                    let dist_sq = c.iter().zip(point).fold(0.0, |acc, (x, p)| acc + (p-x).powi(2));
                     if dist_sq < min_dist_sq[i] {
                         min_dist_sq[i] = dist_sq;
                     }
@@ -98,36 +96,37 @@ fn init_centroids(points: &Vec<(f64,f64)>, k: usize, method: String) -> Vec<(f64
                     panic!("error in if let kmeans_pp")
                 }
             }
-            centroids.push(points[find_next_centroid(&min_dist_sq, &mut rng)]);
+            centroids.push(points[find_next_centroid(&min_dist_sq, &mut rng)].clone());
         }
         centroids
     }
 
-    fn random(points: &Vec<(f64, f64)>, k: usize) -> Vec<(f64,f64)> {
-        let size = Uniform::from(0..points.len()-1);
-        let mut rng = rand::thread_rng();
-        let mut indices = HashSet::with_capacity(k);
-        loop {
-            if indices.len() == k {
-                break
-            }
-            indices.insert(size.sample(&mut rng));
-        }
-        let mut centroids: Vec<(f64,f64)> = Vec::with_capacity(k);
-        for i in indices {
-            centroids.push(points[i])
-        }
-        centroids
-    }
+//    fn random(points: &Vec<(f64, f64)>, k: usize) -> Vec<(f64,f64)> {
+//        let size = Uniform::from(0..points.len()-1);
+//        let mut rng = rand::thread_rng();
+//        let mut indices = HashSet::with_capacity(k);
+//        loop {
+//            if indices.len() == k {
+//                break
+//            }
+//            indices.insert(size.sample(&mut rng));
+//        }
+//        let mut centroids: Vec<(f64,f64)> = Vec::with_capacity(k);
+//        for i in indices {
+//            centroids.push(points[i])
+//        }
+//        centroids
+//    }
+//
+//    if method == "random" {
+//        println!("Using random init");
+//        random(points, k)
+//    } else {
+//        println!("Using kmeans++");
+//        kmeans_pp(points, k)
+//    }
 
-    if method == "random" {
-        println!("Using random init");
-        random(points, k)
-    } else {
-        println!("Using kmeans++");
         kmeans_pp(points, k)
-    }
-
 }
 
 fn is_done(c1: &Vec<usize>, c2: Vec<usize>) -> bool {
