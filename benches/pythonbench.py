@@ -48,8 +48,8 @@ def kmeans_score(points, centroids):
 
 if __name__ == "__main__":
     # sklean points and centroids
-    sk_points = np.random.randint(1000, size=(100000,4))
-
+    sk_points = np.random.randint(100, size=(50000,2))
+    
     # libedist points and centroids
     points = []
     for point in sk_points:
@@ -62,6 +62,7 @@ if __name__ == "__main__":
     result2y = [i[1] for i in result2]
     skx = [i[0] for i in sk_result]
     sky = [i[1] for i in sk_result]
+
 
 #    print("libedist score: " + str(kmeans_score(points, result2)))
 #    print("sk score: " + str(kmeans_score(sk_points, sk_result)))
