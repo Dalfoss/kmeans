@@ -101,32 +101,30 @@ fn init_centroids(points: &Vec<Vec<f64>>, k: usize, method: String) -> Vec<Vec<f
         centroids
     }
 
-//    fn random(points: &Vec<(f64, f64)>, k: usize) -> Vec<(f64,f64)> {
-//        let size = Uniform::from(0..points.len()-1);
-//        let mut rng = rand::thread_rng();
-//        let mut indices = HashSet::with_capacity(k);
-//        loop {
-//            if indices.len() == k {
-//                break
-//            }
-//            indices.insert(size.sample(&mut rng));
-//        }
-//        let mut centroids: Vec<(f64,f64)> = Vec::with_capacity(k);
-//        for i in indices {
-//            centroids.push(points[i])
-//        }
-//        centroids
-//    }
-//
-//    if method == "random" {
-//        println!("Using random init");
-//        random(points, k)
-//    } else {
-//        println!("Using kmeans++");
-//        kmeans_pp(points, k)
-//    }
+    fn random(points: &Vec<Vec<f64>>, k: usize) -> Vec<Vec<f64>> {
+        let size = Uniform::from(0..points.len()-1);
+        let mut rng = rand::thread_rng();
+        let mut indices = HashSet::with_capacity(k);
+        loop {
+            if indices.len() == k {
+                break
+            }
+            indices.insert(size.sample(&mut rng));
+        }
+        let mut centroids: Vec<Vec<f64>> = Vec::with_capacity(k);
+        for i in indices {
+            centroids.push(points[i].clone())
+        }
+        centroids
+    }
 
+    if method == "random" {
+        println!("Using random init");
+        random(points, k)
+    } else {
+        println!("Using kmeans++");
         kmeans_pp(points, k)
+    }
 }
 
 fn is_done(c1: &Vec<usize>, c2: Vec<usize>) -> bool {
