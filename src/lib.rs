@@ -1,4 +1,5 @@
 extern crate pyo3;
+extern crate num_cpus;
 
 use std::collections::HashSet;
 use pyo3::prelude::*;
@@ -35,7 +36,8 @@ fn libedist(_py: Python, m: &PyModule) -> PyResult<()> {
 
 fn closest_centroids(centroids: &Vec<Vec<f64>>, points: &Vec<Vec<f64>>) -> Vec<usize> {
     let mut res: Vec<usize> = Vec::with_capacity(points.len());
-
+    let _num = num_cpus::get();
+    
     for n in points {
         let mut cc: (usize, f64) = (0, std::f64::MAX); // Closest centroid and the squared distance (centroid, dist)
 
