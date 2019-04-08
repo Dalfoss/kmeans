@@ -48,7 +48,7 @@ def kmeans_score(points, centroids):
 
 if __name__ == "__main__":
     # sklean points and centroids
-    sk_points = np.random.randint(100, size=(50000,2))
+    sk_points = np.random.randint(100, size=(500000,2))
     
     # libedist points and centroids
     points = []
