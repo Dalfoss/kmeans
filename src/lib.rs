@@ -12,22 +12,21 @@ use std::sync::mpsc;
 
 #[pyfunction]
 fn kmeans(points: Vec<Vec<f64>>, k: usize, method: String) -> PyResult<Vec<Vec<f64>>> {
-    fn kmeans_inner(centroids: Vec<Vec<f64>>, points: &Arc<Vec<Vec<f64>>>, iterations: usize) -> Vec<Vec<f64>>
+    fn kmeans_inner(centroids: Vec<Vec<f64>>, points: &Arc<Vec<Vec<f64>>>, iterations: usize, inertia: f64) -> Vec<Vec<f64>>
     {
         //        let c_points = closest_centroids(&new_centroids, &points);
         let _num = num_cpus::get();
-        println!("{}, {}", centroids[0][0], centroids[0][1]);
-        let new_centroids = get_new_centroids(centroids, points, _num);
-        if is_done(&iterations) != false {
+        let (new_centroids, new_inertia) = get_new_centroids(centroids, points, _num);
+        if is_done(&inertia, &new_inertia, &iterations) != false {
             println!("Total iterations: {}", iterations+1);
             return new_centroids
         }
-        kmeans_inner(new_centroids, points, iterations+1)
+        kmeans_inner(new_centroids, points, iterations+1, new_inertia)
     }
     let centroids = init_centroids(&points, k, method);
     let ps = Arc::new(points);
 //    let c_points = closest_centroids(&centroids, &points);
-    Ok(kmeans_inner(centroids, &ps, 0))
+    Ok(kmeans_inner(centroids, &ps, 0, 1.0))
 } 
 
 #[pymodule]
@@ -38,8 +37,8 @@ fn libedist(_py: Python, m: &PyModule) -> PyResult<()> {
 }
 
 
-fn closest_centroids(centroids: &Vec<Vec<f64>>, points: &[Vec<f64>]) -> Vec<(usize, Vec<f64>)> {
-    let mut res: Vec<(usize, Vec<f64>)> = Vec::with_capacity(points.len());
+fn closest_centroids(centroids: &Vec<Vec<f64>>, points: &[Vec<f64>]) -> Vec<(usize, f64, Vec<f64>)> {
+    let mut res: Vec<(usize, f64, Vec<f64>)> = Vec::with_capacity(points.len());
     
     for n in points {
         let mut cc: (usize, f64) = (0, std::f64::MAX); // Closest centroid and the squared distance (centroid, dist)
@@ -51,22 +50,9 @@ fn closest_centroids(centroids: &Vec<Vec<f64>>, points: &[Vec<f64>]) -> Vec<(usi
                 cc.1 = sq_dist
             }
         }
-        res.push((cc.0, n.clone()));
+        res.push((cc.0, cc.1, n.clone()));
     }
     res
-}
-
-fn move_centroids(centroids: Vec<Vec<f64>>, points: &Vec<Vec<f64>>, c_points: &Vec<usize>) -> Vec<Vec<f64>> {
-
-    let mut mean_loc: Vec<(f64, Vec<f64>)> = vec![(0.0, vec![0.0; centroids[0].len()]); centroids.len()];
-    
-    for (i,&j) in c_points.iter().enumerate() {
-        mean_loc[j].1 = points[i].iter().zip(&mean_loc[j].1).map(|(p,x)| p+x).collect();
-            
-        mean_loc[j].0 = mean_loc[j].0 + 1.0;
-    }
-
-    mean_loc.iter().map(|(n, c)| c.into_iter().map(|x| x/n).collect()).collect()
 }
 
 fn init_centroids(points: &Vec<Vec<f64>>, k: usize, method: String) -> Vec<Vec<f64>> {
@@ -133,15 +119,18 @@ fn init_centroids(points: &Vec<Vec<f64>>, k: usize, method: String) -> Vec<Vec<f
 }
 
 // is_done needs to be reworked if c_points is no longer used
-fn is_done(c1: &usize) -> bool {
-    if *c1 > 100 {
+fn is_done(inertia: &f64, new_inertia: &f64, c1: &usize) -> bool {
+    if *c1 > 300 {
+        true
+    } else if ((new_inertia - inertia).abs()/new_inertia) < 1.0e-4 {
         true
     } else {
+        println!("{}, {}", (new_inertia - inertia), new_inertia);
         false
     }
 }
 
-fn get_new_centroids(centroids: Vec<Vec<f64>>, points: &Arc<Vec<Vec<f64>>>, cores: usize) -> Vec<Vec<f64>> {
+fn get_new_centroids(centroids: Vec<Vec<f64>>, points: &Arc<Vec<Vec<f64>>>, cores: usize) -> (Vec<Vec<f64>>, f64) {
     let c = Arc::new(centroids);
     let (tx, rx) = mpsc::channel();
     let ppb = points.len()/cores;
@@ -152,35 +141,24 @@ fn get_new_centroids(centroids: Vec<Vec<f64>>, points: &Arc<Vec<Vec<f64>>>, core
         let tx = mpsc::Sender::clone(&tx);
         // Dividing points into n equal sized slices. One for each thread
         if i == cores-1 {
-            let handle = thread::spawn(move || {
+            let _handle = thread::spawn(move || {
                 tx.send(closest_centroids(&c, &ps[i*ppb..])).unwrap();
             }); 
         } else {
-            let handle = thread::spawn(move || {
+            let _handle = thread::spawn(move || {
                 tx.send(closest_centroids(&c, &ps[i*ppb..(i+1)*ppb])).unwrap();
             });
         }
     }
     drop(tx);
     let mut mean_loc: Vec<(f64, Vec<f64>)> = vec![(0.0, vec![0.0; c[0].len()]); c.len()];
+    let mut inertia: f64 = 0.0;
     for recieved in rx {
-        for (index, point) in recieved {
+        for (index, sq_dist, point) in recieved {
             mean_loc[index].0 += 1.0;
             mean_loc[index].1 = point.iter().zip(&mean_loc[index].1).map(|(p,c)| p+c).collect();
+            inertia += sq_dist
         }
     }
-    mean_loc.iter().map(|(n, c)| c.into_iter().map(|x| x/n).collect()).collect()
-}
-
-fn split_points(points: Vec<Vec<f64>>, cores: usize) -> Vec<Vec<Vec<f64>>> {
-    let mut result: Vec<Vec<Vec<f64>>> = Vec::with_capacity(cores);
-    let ppb = points.len()/cores;
-    for i in 0..cores {
-        if i == cores-1 {
-            result.push(points[i*ppb..].to_vec())
-        } else {
-            result.push(points[i*ppb..(i+1)*ppb].to_vec())
-        }
-    }
-    result
+    (mean_loc.iter().map(|(n, c)| c.into_iter().map(|x| x/n).collect()).collect(), inertia)
 }
