@@ -122,7 +122,7 @@ fn init_centroids(points: &Vec<Vec<f64>>, k: usize, method: String) -> Vec<Vec<f
 fn is_done(inertia: &f64, new_inertia: &f64, c1: &usize) -> bool {
     if *c1 > 300 {
         true
-    } else if ((new_inertia - inertia).abs()/new_inertia) < 1.0e-4 {
+    } else if ((new_inertia - inertia).abs()/new_inertia) < 1.0e-5 {
         true
     } else {
         println!("{}, {}", (new_inertia - inertia), new_inertia);
