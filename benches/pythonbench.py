@@ -7,9 +7,7 @@ import matplotlib.pyplot as plt
 sys.path.append("../target/release/")
 
 import libedist
-
-
-
+   
 def run_kmeans(points, k):
     start = time.perf_counter()
     final_centroids = libedist.kmeans(points, k, "kmeans_pp")
