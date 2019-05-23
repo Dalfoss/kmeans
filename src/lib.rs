@@ -6,27 +6,44 @@ use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
 use rand::prelude::*;
 use rand::distributions::{Distribution, Uniform};
-use std::thread;
 use std::sync::Arc;
-use std::sync::mpsc;
+
+
+mod kmeans;
 
 #[pyfunction]
-fn kmeans(points: Vec<Vec<f64>>, k: usize, method: String) -> PyResult<Vec<Vec<f64>>> {
-    fn kmeans_inner(centroids: Vec<Vec<f64>>, points: &Arc<Vec<Vec<f64>>>, iterations: usize, inertia: f64) -> Vec<Vec<f64>>
+fn kmeans(points: Vec<Vec<f64>>, k: usize, init_method: String, method: String) -> PyResult<Vec<Vec<f64>>> {
+    // Regular Kmeans implementation
+    fn kmeans_reg(centroids: Vec<Vec<f64>>, points: Vec<Vec<f64>>, iterations: usize, inertia: f64) -> Vec<Vec<f64>>
     {
-        //        let c_points = closest_centroids(&new_centroids, &points);
-        let _num = num_cpus::get();
-        let (new_centroids, new_inertia) = get_new_centroids(centroids, points, _num);
+        let (new_centroids, new_inertia) = kmeans::regular::get_new_centroids(centroids, &points);
         if is_done(&inertia, &new_inertia, &iterations) != false {
             println!("Total iterations: {}", iterations+1);
             return new_centroids
         }
-        kmeans_inner(new_centroids, points, iterations+1, new_inertia)
+        kmeans_reg(new_centroids, points, iterations+1, new_inertia)
     }
-    let centroids = init_centroids(&points, k, method);
-    let ps = Arc::new(points);
-//    let c_points = closest_centroids(&centroids, &points);
-    Ok(kmeans_inner(centroids, &ps, 0, 1.0))
+
+    // Multithreaded Kmeans implementation
+    fn kmeans_mult(centroids: Vec<Vec<f64>>, points: &Arc<Vec<Vec<f64>>>, iterations: usize, inertia: f64) -> Vec<Vec<f64>>
+    {
+        let _num = num_cpus::get();
+        let (new_centroids, new_inertia) = kmeans::multithreaded::get_new_centroids(centroids, points, _num);
+        if is_done(&inertia, &new_inertia, &iterations) != false {
+            println!("Total iterations: {}", iterations+1);
+            return new_centroids
+        }
+        kmeans_mult(new_centroids, points, iterations+1, new_inertia)
+    }
+
+    let centroids = init_centroids(&points, k, init_method);
+
+    if method == "multithreaded" {
+        let ps = Arc::new(points);
+        Ok(kmeans_mult(centroids, &ps, 0, 1.0))
+    } else {
+        Ok(kmeans_reg(centroids, points, 0, 1.0))
+    }
 } 
 
 #[pymodule]
@@ -34,25 +51,6 @@ fn libedist(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_wrapped(wrap_pyfunction!(kmeans))?;
 
     Ok(())
-}
-
-
-fn closest_centroids(centroids: &Vec<Vec<f64>>, points: &[Vec<f64>]) -> Vec<(usize, f64, Vec<f64>)> {
-    let mut res: Vec<(usize, f64, Vec<f64>)> = Vec::with_capacity(points.len());
-    
-    for n in points {
-        let mut cc: (usize, f64) = (0, std::f64::MAX); // Closest centroid and the squared distance (centroid, dist)
-
-        for (i,j) in centroids.iter().enumerate() {
-            let sq_dist: f64 = j.iter().zip(n).fold(0.0, |acc, (x, p)| acc + (p-x).powi(2));
-            if sq_dist < cc.1 {
-                cc.0 = i;
-                cc.1 = sq_dist
-            }
-        }
-        res.push((cc.0, cc.1, n.clone()));
-    }
-    res
 }
 
 fn init_centroids(points: &Vec<Vec<f64>>, k: usize, method: String) -> Vec<Vec<f64>> {
@@ -118,47 +116,14 @@ fn init_centroids(points: &Vec<Vec<f64>>, k: usize, method: String) -> Vec<Vec<f
     }
 }
 
-// is_done needs to be reworked if c_points is no longer used
 fn is_done(inertia: &f64, new_inertia: &f64, c1: &usize) -> bool {
     if *c1 > 300 {
+        println!("Final inertia: {}", new_inertia)
         true
     } else if ((new_inertia - inertia).abs()/new_inertia) < 1.0e-5 {
+        println!("Final inertia: {}", new_inertia)
         true
     } else {
-        println!("{}, {}", (new_inertia - inertia), new_inertia);
         false
     }
-}
-
-fn get_new_centroids(centroids: Vec<Vec<f64>>, points: &Arc<Vec<Vec<f64>>>, cores: usize) -> (Vec<Vec<f64>>, f64) {
-    let c = Arc::new(centroids);
-    let (tx, rx) = mpsc::channel();
-    let ppb = points.len()/cores;
-
-    for i in 0..cores {
-        let c = Arc::clone(&c);
-        let ps = Arc::clone(&points);
-        let tx = mpsc::Sender::clone(&tx);
-        // Dividing points into n equal sized slices. One for each thread
-        if i == cores-1 {
-            let _handle = thread::spawn(move || {
-                tx.send(closest_centroids(&c, &ps[i*ppb..])).unwrap();
-            }); 
-        } else {
-            let _handle = thread::spawn(move || {
-                tx.send(closest_centroids(&c, &ps[i*ppb..(i+1)*ppb])).unwrap();
-            });
-        }
-    }
-    drop(tx);
-    let mut mean_loc: Vec<(f64, Vec<f64>)> = vec![(0.0, vec![0.0; c[0].len()]); c.len()];
-    let mut inertia: f64 = 0.0;
-    for recieved in rx {
-        for (index, sq_dist, point) in recieved {
-            mean_loc[index].0 += 1.0;
-            mean_loc[index].1 = point.iter().zip(&mean_loc[index].1).map(|(p,c)| p+c).collect();
-            inertia += sq_dist
-        }
-    }
-    (mean_loc.iter().map(|(n, c)| c.into_iter().map(|x| x/n).collect()).collect(), inertia)
 }
