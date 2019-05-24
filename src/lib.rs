@@ -69,6 +69,7 @@ fn init_centroids(points: &Vec<Vec<f64>>, k: usize, method: String) -> Vec<Vec<f
                     for (i, entry) in n_samples.iter().enumerate() {
                         if value >= &entry.1 {
                             value_index = i;
+                            break
                         }
                     }
                     n_samples.insert(value_index, (index, *value));
@@ -110,8 +111,7 @@ fn init_centroids(points: &Vec<Vec<f64>>, k: usize, method: String) -> Vec<Vec<f
 //            .iter().map(|(index, value)| index).collect();
 
         // Amount of centroid locations to try when choosing each centroid
-        let samples = std::mem::size_of::<usize>() - k.leading_zeros() as usize;
-        
+        let samples = std::mem::size_of::<usize>() * 8 - k.leading_zeros() as usize;
         let mut rng = rand::thread_rng();
         let mut centroids: Vec<Vec<f64>> = Vec::with_capacity(k);
         let mut min_dist_sq: Vec<f64> = vec![std::f64::MAX; points.len()];
