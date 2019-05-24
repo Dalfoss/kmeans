@@ -5,7 +5,7 @@ use std::collections::HashSet;
 use pyo3::prelude::*;
 use pyo3::wrap_pyfunction;
 use rand::prelude::*;
-use rand::distributions::{Distribution, Uniform};
+use rand::distributions::{Distribution, Uniform, Standard};
 use std::sync::Arc;
 
 
@@ -56,16 +56,61 @@ fn libedist(_py: Python, m: &PyModule) -> PyResult<()> {
 fn init_centroids(points: &Vec<Vec<f64>>, k: usize, method: String) -> Vec<Vec<f64>> {
 
     fn kmeans_pp(points: &Vec<Vec<f64>>, k: usize) -> Vec<Vec<f64>> {
-        fn find_next_centroid(dists: &Vec<f64>, rng: &mut ThreadRng) -> usize {
-            let mut best_choice: (usize, f64) = (0, 0.0);
-            for (i, &j) in dists.iter().enumerate() {
-                let value = j * rng.gen::<f64>();
-                if value > best_choice.1 {
-                    best_choice = (i, value);
+        fn find_candidates(dists: &Vec<f64>, samples: usize, rng: &mut ThreadRng) -> Vec<usize> {
+
+            let values: Vec<f64> = dists.iter().zip(rng.sample_iter(&Standard))
+                .map(|(d, r):(&f64,f64)| d*r).collect();
+
+            let mut n_samples = vec![(0, 0.0); samples];
+
+            for (index, value) in values.iter().enumerate() {
+                if value > &n_samples.last().unwrap().1 {
+                    let mut value_index = 0;
+                    for (i, entry) in n_samples.iter().enumerate() {
+                        if value >= &entry.1 {
+                            value_index = i;
+                        }
+                    }
+                    n_samples.insert(value_index, (index, *value));
+                    n_samples.pop();
                 }
             }
-            best_choice.0
+
+            // Indicies of the best candidates from points to become a centroid
+            n_samples.iter().map(|x| x.0).collect()
         }
+
+        fn best_candidate(points: &Vec<Vec<f64>>, indicies: Vec<usize>) -> usize {
+            // Index of the best candidate from points to become a centroid
+            let mut best_centroid: usize = 0;
+            let mut best_pot: f64 = std::f64::MAX;
+            
+            for index in indicies {
+                let new_pot = points.iter().map(|p| p.into_iter().zip(&points[index])
+                                                .fold(0.0, |acc, (x, c)| acc + (c-x).powi(2))).sum();
+                if new_pot < best_pot {
+                    best_pot = new_pot;
+                    best_centroid = index
+                } 
+            }
+            best_centroid
+        }
+ 
+//            let best_indicies = values.iter().enumerate()
+//                .fold(vec![(0, 0.0);samples], |acc, (i, x)|
+//                      if x > &acc.last().unwrap().1 {
+//                          for (index, entry) in acc.iter().enumerate() {
+//                              if x >= &entry.1 {
+//                                  acc.insert(index, (i, *x));
+//                                  acc.pop();
+//                              }
+//                          }
+//                      }
+//                      acc);
+//            .iter().map(|(index, value)| index).collect();
+
+        // Amount of centroid locations to try when choosing each centroid
+        let samples = std::mem::size_of::<usize>() - k.leading_zeros() as usize;
         
         let mut rng = rand::thread_rng();
         let mut centroids: Vec<Vec<f64>> = Vec::with_capacity(k);
@@ -85,7 +130,10 @@ fn init_centroids(points: &Vec<Vec<f64>>, k: usize, method: String) -> Vec<Vec<f
                     panic!("error in if let kmeans_pp")
                 }
             }
-            centroids.push(points[find_next_centroid(&min_dist_sq, &mut rng)].clone());
+            
+            let best_centroid = best_candidate(points,
+                                               find_candidates(&min_dist_sq, samples, &mut rng));
+            centroids.push(points[best_centroid].clone());
         }
         centroids
     }
@@ -118,10 +166,10 @@ fn init_centroids(points: &Vec<Vec<f64>>, k: usize, method: String) -> Vec<Vec<f
 
 fn is_done(inertia: &f64, new_inertia: &f64, c1: &usize) -> bool {
     if *c1 > 300 {
-        println!("Final inertia: {}", new_inertia)
+        println!("Final inertia: {}", new_inertia);
         true
     } else if ((new_inertia - inertia).abs()/new_inertia) < 1.0e-5 {
-        println!("Final inertia: {}", new_inertia)
+        println!("Final inertia: {}", new_inertia);
         true
     } else {
         false
