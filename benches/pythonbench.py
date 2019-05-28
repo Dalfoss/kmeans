@@ -9,7 +9,7 @@ sys.path.append("../target/release/")
 import libedist
    
 def run_kmeans(points, k):
-    for i in ["multithreaded", "regular"]:
+    for i in ["regular", "multithreaded"]:
         start = time.perf_counter()
         final_centroids = libedist.kmeans(points, k, "kmeans_pp", i)
         end = time.perf_counter()
@@ -20,7 +20,7 @@ def run_kmeans(points, k):
 
 
 def run_kmeans_random(points, k):
-    for i in ["multithreaded", "regular"]:
+    for i in ["regular", "multithreaded"]:
         start = time.perf_counter()
         final_centroids = libedist.kmeans(points, k, "random", i)
         end = time.perf_counter()
@@ -32,7 +32,7 @@ def run_kmeans_random(points, k):
 
 def run_sk_kmeans(points, k):
     start = time.perf_counter()
-    kmeans = KMeans(n_init=1, verbose=1, n_clusters=k).fit(points)
+    kmeans = KMeans(verbose=1, n_clusters=k).fit(points)
     end = time.perf_counter()
     delta = end - start
     print("Runtime: %f seconds" % delta)
@@ -55,7 +55,7 @@ if __name__ == "__main__":
     points = []
     for point in sk_points:
         points.append([point[0], point[1]])
-    result1 = run_kmeans_random(points, 100)
+#    result1 = run_kmeans_random(points, 100)
     result2 = run_kmeans(points, 100)
     sk_result = run_sk_kmeans(sk_points, 100)
     print(len(result2))
