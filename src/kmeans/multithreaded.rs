@@ -1,6 +1,3 @@
-extern crate pyo3;
-extern crate num_cpus;
-
 use std::thread;
 use std::sync::Arc;
 use std::sync::mpsc;

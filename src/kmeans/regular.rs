@@ -1,5 +1,3 @@
-extern crate pyo3;
-
 fn closest_centroids(centroids: &Vec<Vec<f64>>, points: &Vec<Vec<f64>>) -> (Vec<usize>, f64) {
     let mut res: Vec<usize> = Vec::with_capacity(points.len());
     let mut inertia = 0.0;
