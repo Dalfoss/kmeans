@@ -25,16 +25,11 @@ fn closest_centroids(centroids: &Vec<Vec<f64>>, points: &[Vec<f64>]) -> Vec<(usi
     let mut res: Vec<(usize, f64, Vec<f64>)> = Vec::with_capacity(points.len());
     
     for n in points {
-        let mut cc: (usize, f64) = (0, std::f64::MAX); // Closest centroid and the squared distance (centroid, dist)
-
-        for (i,j) in centroids.iter().enumerate() {
-            let sq_dist: f64 = j.iter().zip(n).fold(0.0, |acc, (x, p)| acc + (p-x).powi(2));
-            if sq_dist < cc.1 {
-                cc.0 = i;
-                cc.1 = sq_dist
-            }
+        // Closest centroid and the squared distance (centroid, dist)
+        match crate::kmeans::euclidean::min_sq_dist(n, centroids) {
+            Ok(cc) => res.push((cc.0, cc.1, n.clone())),
+            Err(err) => panic!(err),
         }
-        res.push((cc.0, cc.1, n.clone()));
     }
     res
 }
